@@ -31,20 +31,19 @@ def check_trend_direction(hourly_close: np.ndarray, boll_period: int = 20, lookb
     """
     判断小时线方向
     返回: (is_bullish, slope_value)
+    用最近 lookback 根小时线的 BOLL 中轨值做线性回归
     """
     if len(hourly_close) < boll_period + lookback:
         return None, 0.0
     
-    # 取最近一根完整小时线的中轨
-    # 中轨 = SMA(period)
-    mid = np.mean(hourly_close[-(boll_period):])
-    
-    # 收集最近 N 根小时线的中轨值
+    # 收集最近 lookback 根小时线的中轨值
     mids = []
     for i in range(lookback):
-        segment = hourly_close[-(boll_period + lookback - i - 1):-(lookback - i - 1)] if (lookback - i - 1) > 0 else hourly_close[-(boll_period + lookback - i - 1):]
+        end = len(hourly_close) - i
+        start = end - boll_period
+        segment = hourly_close[start:end]
         if len(segment) >= boll_period:
-            mids.append(np.mean(segment[-boll_period:]))
+            mids.append(np.mean(segment))
     
     if len(mids) < 2:
         return None, 0.0

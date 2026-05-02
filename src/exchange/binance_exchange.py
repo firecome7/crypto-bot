@@ -20,28 +20,36 @@ class BinanceExchange:
         self.cfg = config or load_config()
         exc_cfg = self.cfg["exchange"]
 
-        # 判断测试网
-        if exc_cfg.get("testnet", True):
-            self.exchange = ccxt_async.binance({
-                "apiKey": exc_cfg["api_key"],
-                "secret": exc_cfg["api_secret"],
-                "options": {
-                    "defaultType": "future",
-                    "adjustForTimeDifference": True,
-                },
-            })
+        mode = exc_cfg.get("mode", "demo")  # testnet / demo / live
+        
+        common_opts = {
+            "apiKey": exc_cfg["api_key"],
+            "secret": exc_cfg["api_secret"],
+            "options": {
+                "defaultType": "future",
+                "adjustForTimeDifference": True,
+            },
+        }
+        
+        if mode == "demo":
+            self.exchange = ccxt_async.binance(common_opts)
+            # 替换 fapi 端点为 demo 环境
+            demo_urls = self.exchange.urls.get("demo", {})
+            for key in ("fapiPublic", "fapiPublicV2", "fapiPublicV3",
+                        "fapiPrivate", "fapiPrivateV2", "fapiPrivateV3"):
+                if key in demo_urls:
+                    self.exchange.urls["api"][key] = demo_urls[key]
+            self.ws_base = "wss://demo-fapi.binance.com/ws"
+            logger.info("使用 Demo Trading 模式 (永续合约模拟环境)")
+        elif mode == "testnet":
+            self.exchange = ccxt_async.binance(common_opts)
             self.exchange.set_sandbox_mode(True)
             self.ws_base = "wss://testnet.binancefuture.com/ws"
-        else:
-            self.exchange = ccxt_async.binance({
-                "apiKey": exc_cfg["api_key"],
-                "secret": exc_cfg["api_secret"],
-                "options": {
-                    "defaultType": "future",
-                    "adjustForTimeDifference": True,
-                },
-            })
+            logger.info("使用 Testnet 模式 (仅现货)")
+        else:  # live
+            self.exchange = ccxt_async.binance(common_opts)
             self.ws_base = "wss://fstream.binance.com/ws"
+            logger.info("使用实盘模式")
 
         self.trading_cfg = self.cfg["trading"]
         self.signal_cfg = self.cfg["signal"]

@@ -134,8 +134,8 @@ class DailyScreener:
         """
         logger.info("开始每日选币更新...")
         
-        # 测试网用固定币种列表（测试网无真实交易量数据）
-        if self.cfg["exchange"].get("testnet", False):
+        # Demo/Testnet 模式用固定币种列表（无真实交易量数据）
+        if self.cfg["exchange"].get("mode", "demo") in ("demo", "testnet"):
             pairs = TESTNET_PAIRS
             logger.info(f"测试网模式: 使用固定币种列表 {pairs}")
         else:
