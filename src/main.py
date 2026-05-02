@@ -11,13 +11,13 @@ from datetime import datetime, time
 from loguru import logger
 import numpy as np
 
-from ..utils.config import load_config
-from ..exchange.binance_exchange import BinanceExchange
-from ..exchange.data_manager import DataManager, DailyScreener
-from ..signal.signal_engine import EntrySignalDetector, check_trend_direction
-from ..risk.risk_manager import RiskManager
-from ..executor.executor import Executor, TradeRecorder
-from ..analysis.daily_analyzer import DailyAnalyzer
+from src.utils.config import load_config
+from src.exchange.binance_exchange import BinanceExchange
+from src.exchange.data_manager import DataManager, DailyScreener
+from src.signal.signal_engine import EntrySignalDetector, check_trend_direction
+from src.risk.risk_manager import RiskManager
+from src.executor.executor import Executor, TradeRecorder
+from src.analysis.daily_analyzer import DailyAnalyzer
 
 
 class CryptoBot:
@@ -220,10 +220,17 @@ class CryptoBot:
         for s in self.current_pairs:
             self.update_trend(s)
         
-        # 4. 启动每日定时任务
+        # 4. 打印方向判定结果
+        logger.info("===== 方向判定结果 =====")
+        for s in self.current_pairs[:5]:
+            bull, slope = self.trend_cache.get(s, (None, 0))
+            direction = "多头" if bull else "空头" if bull is not None else "未知"
+            logger.info(f"  {s}: {direction} (slope={slope:.6f})")
+        
+        # 5. 启动每日定时任务
         asyncio.create_task(self.daily_schedule())
         
-        # 5. 订阅 WebSocket 行情
+        # 6. 订阅 WebSocket 行情
         clean_symbols = [s for s in self.current_pairs]  # BTCUSDT 格式
         
         # 订阅5分钟K线（入场信号）
@@ -264,12 +271,65 @@ class CryptoBot:
         self.data_mgr.flush_all()
         logger.info("机器人已停止")
 
+    async def run_signal_test(self):
+        """快速信号检测测试（拉取一次数据，不依赖WebSocket）"""
+        logger.info("===== 信号检测测试开始 =====")
+        
+        # 1. 初始化
+        await self.init()
+        
+        # 2. 获取交易对
+        self.current_pairs = await self.screener.run_daily_update(self.exchange)
+        
+        # 3. 加载小时线方向
+        logger.info("加载小时线数据...")
+        await self.load_hourly_klines(self.current_pairs)
+        for s in self.current_pairs:
+            self.update_trend(s)
+        
+        # 4. 拉取5分钟线检测入场信号
+        logger.info("===== 检测入场信号 =====")
+        for s in self.current_pairs:
+            bull, slope = self.trend_cache.get(s, (None, 0))
+            if bull is None:
+                continue
+            
+            try:
+                idx = s.find("USDT")
+                symbol_fmt = s[:idx] + "/" + s[idx:]
+                klines = await self.exchange.fetch_klines(symbol_fmt, "5m", limit=50)
+                if not klines:
+                    continue
+                
+                for k in klines:
+                    self.signal_detector.add_kline(s, k, True)
+                
+                direction = "多头" if bull else "空头"
+                if bull:
+                    has_sig, reason = self.signal_detector.check_long_signal(s, bull)
+                else:
+                    has_sig, reason = self.signal_detector.check_short_signal(s, bull)
+                
+                if has_sig:
+                    price = self.signal_detector.get_signal_entry_price(s)
+                    logger.info(f">> {s} {direction} 信号: {reason} @ {price}")
+                else:
+                    logger.debug(f"  {s} {direction}: 无信号")
+                
+                await asyncio.sleep(0.1)
+            except Exception as e:
+                logger.warning(f"  {s} 检测失败: {e}")
+        
+        logger.info("===== 信号检测测试完成 =====")
+        await self.exchange.close()
+
 
 async def main():
-    bot = CryptoBot()
-    await bot.start()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    if "--test" in sys.argv:
+        bot = CryptoBot()
+        await bot.run_signal_test()
+    else:
+        bot = CryptoBot()
+        await bot.start()
 

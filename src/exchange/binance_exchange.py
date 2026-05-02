@@ -29,13 +29,8 @@ class BinanceExchange:
                     "defaultType": "future",
                     "adjustForTimeDifference": True,
                 },
-                "urls": {
-                    "api": {
-                        "public": "https://testnet.binancefuture.com",
-                        "private": "https://testnet.binancefuture.com",
-                    },
-                },
             })
+            self.exchange.set_sandbox_mode(True)
             self.ws_base = "wss://testnet.binancefuture.com/ws"
         else:
             self.exchange = ccxt_async.binance({

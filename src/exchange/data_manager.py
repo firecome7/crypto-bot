@@ -15,6 +15,12 @@ from loguru import logger
 
 from src.exchange.binance_exchange import BinanceExchange, get_top_usdt_pairs
 
+# 测试网固定币种列表（用于测试信号逻辑）
+TESTNET_PAIRS = [
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
+    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
+]
+
 
 class DataManager:
     """
@@ -128,11 +134,16 @@ class DailyScreener:
         """
         logger.info("开始每日选币更新...")
         
-        pairs = await get_top_usdt_pairs(
-            exchange,
-            exclude_top=self.trading_cfg["exclude_top_n"],
-            count=self.trading_cfg["watch_count"],
-        )
+        # 测试网用固定币种列表（测试网无真实交易量数据）
+        if self.cfg["exchange"].get("testnet", False):
+            pairs = TESTNET_PAIRS
+            logger.info(f"测试网模式: 使用固定币种列表 {pairs}")
+        else:
+            pairs = await get_top_usdt_pairs(
+                exchange,
+                exclude_top=self.trading_cfg["exclude_top_n"],
+                count=self.trading_cfg["watch_count"],
+            )
         
         self.data_mgr.save_daily_pairs(pairs)
         
