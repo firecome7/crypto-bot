@@ -9,7 +9,7 @@ import time
 CACHE_DIR = Path(__file__).parent / "data" / "cache"
 BOLL_PERIOD = 20
 MIN_SLOPE_ABS = 0.05  # 斜率绝对值低于此值不做（极弱趋势过滤）
-STOP_LOSS_PCT = 0.03
+STOP_LOSS_PCT = 0.035
 TRAILING_ACTIVATE = 0.03
 TRAILING_DRAWDOWN = 0.40
 PARTIAL_TAKE_PROFIT = 0.08
