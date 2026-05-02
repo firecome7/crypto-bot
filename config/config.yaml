@@ -1,0 +1,44 @@
+# ============================================
+# Crypto Bot 主配置文件
+# ============================================
+
+exchange:
+  name: binance
+  api_key: ""
+  api_secret: ""
+  testnet: true
+  margin_type: isolated
+  leverage: 1
+
+trading:
+  base_currency: USDT
+  exclude_top_n: 10
+  watch_count: 40
+  max_positions: 20
+  position_pct: 0.10
+  stop_loss_pct: 0.02
+  trailing_activate_pct: 0.03
+  trailing_drawdown_pct: 0.60
+  order_type: market
+
+signal:
+  trend:
+    period: 1h
+    boll_period: 20
+    boll_std: 2.0
+    slope_lookback: 5
+  entry:
+    period: 5m
+    boll_period: 20
+    boll_std: 2.0
+
+data:
+  kline_path: /home/admin/crypto-bot/data/kline
+  trade_log_path: /home/admin/crypto-bot/data/trade_log
+  analysis_path: /home/admin/crypto-bot/data/analysis
+  market_path: /home/admin/crypto-bot/data/market
+  daily_update_time: "08:00"
+
+logging:
+  level: INFO
+  file: /home/admin/crypto-bot/data/bot.log
